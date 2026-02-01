@@ -2,6 +2,11 @@ import { NextAuthOptions } from 'next-auth'
 import DiscordProvider from 'next-auth/providers/discord'
 import { fetchUserRoles, isAdmin } from '@/lib/discord'
 
+// Fjern evt. trailing slash så Discord OAuth2 redirect matcher præcist
+if (process.env.NEXTAUTH_URL?.endsWith('/')) {
+  process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL.slice(0, -1)
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     DiscordProvider({
