@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [trustScore, setTrustScore] = useState(100)
   const [warnings, setWarnings] = useState<Warning[]>([])
   const [isBanned, setIsBanned] = useState(false)
+  const [discordRoles, setDiscordRoles] = useState<{ id: string; name: string }[]>([])
   const BAN_ROLE_ID = '1459894685051916448'
 
   useEffect(() => {
@@ -77,6 +78,21 @@ export default function Dashboard() {
       loadApplications()
       loadTrustData()
     }
+  }, [session])
+
+  useEffect(() => {
+    if (!session?.user) {
+      setDiscordRoles([])
+      return
+    }
+    fetch('/api/auth/roles?withNames=true')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.roles)) {
+          setDiscordRoles(data.roles)
+        }
+      })
+      .catch(() => setDiscordRoles([]))
   }, [session])
 
   const loadTrustData = async () => {
@@ -325,7 +341,7 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-chrome-gray-400 mb-1">Status</p>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         <p className="text-white font-semibold">
                           {(session?.user as any)?.isAdmin ? 'Admin' : 'Bruger'}
                         </p>
@@ -335,22 +351,22 @@ export default function Dashboard() {
                           </span>
                         )}
                       </div>
-                    </div>
-                    {(session?.user as any)?.roles && (session?.user as any).roles.length > 0 && (
-                      <div>
-                        <p className="text-sm text-chrome-gray-400 mb-1">Roller</p>
-                        <div className="flex flex-wrap gap-2">
-                          {(session?.user as any).roles.map((role: string, index: number) => (
-                            <span
-                              key={index}
-                              className="px-2 py-1 bg-chrome-gray-700/50 text-chrome-gray-200 rounded text-xs font-medium border border-chrome-gray-600/50"
-                            >
-                              {role}
-                            </span>
-                          ))}
+                      {discordRoles.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs text-chrome-gray-500 mb-1.5">Discord-roller</p>
+                          <div className="flex flex-wrap gap-2">
+                            {discordRoles.map((role) => (
+                              <span
+                                key={role.id}
+                                className="px-2 py-1 bg-chrome-gray-700/50 text-chrome-gray-200 rounded text-xs font-medium border border-chrome-gray-600/50"
+                              >
+                                {role.name}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

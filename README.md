@@ -168,6 +168,15 @@ Render deployer automatisk når du pusher til din main/master branch. Du kan ogs
 - **OAuth virker ikke:** Tjek at callback URL i Discord matcher din Render URL præcist
 - **Timeout:** Free tier har en 15 minutters timeout hvis der ikke er aktivitet. Overvej at opgradere til en betalt plan for at undgå dette
 
+#### "Ugyldig URL til OAuth2-omdirigering" (Discord)
+
+1. **Render – Environment:** `NEXTAUTH_URL` skal være **uden** afsluttende `/`, fx `https://averarp.onrender.com` (ikke `https://averarp.onrender.com/`).
+2. **Discord Developer Portal** → din app → **OAuth2** → **Redirects** → tilføj **præcis** én redirect:
+   - `https://averarp.onrender.com/api/auth/callback/discord`  
+   (ingen mellemrum, ingen `/` efter `discord`, kun `https`).
+3. **Samme app:** Den Discord-app hvor du tilføjede redirect ovenfor skal have **samme Client ID** som `DISCORD_CLIENT_ID` på Render. Hvis du har flere Discord-apps, tilføj redirect i den app hvis Client ID du bruger på Render.
+4. Gem i Discord, vent 1–2 minutter, prøv login igen (evt. i inkognitovindue eller efter at have slettet cookies for discord.com og din side).
+
 ## Struktur
 
 - `app/` - Next.js App Router filer

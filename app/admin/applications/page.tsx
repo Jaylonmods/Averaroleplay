@@ -34,6 +34,11 @@ export default function ApplicationsPage() {
   const [reviewNote, setReviewNote] = useState('')
   const applicationsPerPage = 10
 
+  // Rolle der begrænser adgang: har man denne rolle, kan man IKKE se/søge whitelist-ansøgninger, men kan se alle andre
+  const WHITELIST_RESTRICTED_ROLE_ID = '1459894678336831552'
+  const userRoleIds = (session?.user as any)?.roleIds || []
+  const cannotSeeWhitelist = userRoleIds.includes(WHITELIST_RESTRICTED_ROLE_ID)
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/')
@@ -51,6 +56,13 @@ export default function ApplicationsPage() {
       loadApplications()
     }
   }, [status, session])
+
+  // Nulstil type-filter hvis brugeren har whitelist-begrænsning og filteret er sat til whitelist
+  useEffect(() => {
+    if (cannotSeeWhitelist && filterType === 'whitelist') {
+      setFilterType('')
+    }
+  }, [cannotSeeWhitelist, filterType])
 
   const loadApplications = async () => {
     try {
@@ -79,6 +91,11 @@ export default function ApplicationsPage() {
   useEffect(() => {
     let filtered = applications
 
+    // Hvis brugeren har whitelist-begrænsende rolle: udeluk whitelist-ansøgninger helt
+    if (cannotSeeWhitelist) {
+      filtered = filtered.filter((app) => app.type !== 'whitelist')
+    }
+
     // Filter by status
     if (filterStatus) {
       filtered = filtered.filter((app) => app.status === filterStatus)
@@ -102,10 +119,16 @@ export default function ApplicationsPage() {
 
     setFilteredApplications(filtered)
     setCurrentPage(1)
-  }, [searchQuery, filterStatus, filterType, applications])
+  }, [searchQuery, filterStatus, filterType, applications, cannotSeeWhitelist])
 
-  // Get unique types for filter
-  const uniqueTypes = Array.from(new Set(applications.map((app) => app.type))).sort()
+  // Get unique types for filter (udelad whitelist hvis brugeren ikke må se dem)
+  const uniqueTypes = Array.from(
+    new Set(
+      applications
+        .filter((app) => !cannotSeeWhitelist || app.type !== 'whitelist')
+        .map((app) => app.type)
+    )
+  ).sort()
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredApplications.length / applicationsPerPage)
@@ -278,7 +301,14 @@ export default function ApplicationsPage() {
                 <h1 className="text-5xl md:text-6xl font-bold mb-2 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 bg-clip-text text-transparent">
                   Ansøgninger
                 </h1>
-                <p className="text-lg text-chrome-gray-300">Gennemse og administrer alle ansøgninger</p>
+                <p className="text-lg text-chrome-gray-300">
+                  Gennemse og administrer alle ansøgninger
+                  {cannotSeeWhitelist && (
+                    <span className="block mt-1 text-sm text-chrome-gray-400">
+                      (Whitelist-ansøgninger er ikke tilgængelige for din rolle)
+                    </span>
+                  )}
+                </p>
               </div>
               <button
                 onClick={loadApplications}

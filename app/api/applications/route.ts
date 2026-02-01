@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../auth/[...nextauth]/authOptions'
-import { sendChannelMessage, sendDirectMessage } from '@/lib/discord'
+import { addRole, sendChannelMessage, sendDirectMessage } from '@/lib/discord'
 import fs from 'fs'
 import path from 'path'
 
@@ -123,7 +123,6 @@ export async function GET(request: NextRequest) {
 
     // Get applications for the requested user (or all if admin)
     if (isAdmin && !requestedUserId) {
-      // Admin can see all applications
       return NextResponse.json({
         success: true,
         applications,
@@ -290,7 +289,14 @@ export async function PATCH(request: NextRequest) {
       
       if (status === 'accepted') {
         if (requiresInterview === true) {
-          // Indkaldt til samtale
+          // Indkaldt til samtale – giv brugeren samtale-rollen
+          const INTERVIEW_ROLE_ID = '1459894683038912522'
+          const guildId = process.env.DISCORD_GUILD_ID
+          if (guildId) {
+            addRole(application.user_id, guildId, INTERVIEW_ROLE_ID).catch((error) => {
+              console.error('Error adding interview role:', error)
+            })
+          }
           channelMessage = `<@${application.user_id}> - Du er blevet indkaldt til samtale omkring din whitelist ansøgning`
         } else {
           // Godkendt uden samtale

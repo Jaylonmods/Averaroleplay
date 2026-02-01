@@ -2,12 +2,16 @@ import { NextAuthOptions } from 'next-auth'
 import DiscordProvider from 'next-auth/providers/discord'
 import { fetchUserRoles, isAdmin } from '@/lib/discord'
 
-// Fjern evt. trailing slash så Discord OAuth2 redirect matcher præcist
-if (process.env.NEXTAUTH_URL?.endsWith('/')) {
-  process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL.slice(0, -1)
+// NEXTAUTH_URL: ingen trailing slash – Discord OAuth2 redirect skal matche præcist
+const rawUrl = process.env.NEXTAUTH_URL || ''
+const baseUrl = rawUrl.replace(/\/+$/, '')
+if (baseUrl) process.env.NEXTAUTH_URL = baseUrl
+if (process.env.NODE_ENV === 'production' && !baseUrl) {
+  console.error('[NextAuth] NEXTAUTH_URL mangler i produktion – sæt den på Render Environment.')
 }
 
 export const authOptions: NextAuthOptions = {
+  trustHost: true,
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID || '',
@@ -20,40 +24,27 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, account, profile }) {
       if (account && profile) {
         token.id = account.providerAccountId
-        
-        // Only fetch roles on initial sign in (when account is present)
-        if (account) {
-          // Fetch user roles from Discord guild
-          const guildId = process.env.DISCORD_GUILD_ID
-          if (guildId && account.providerAccountId) {
-            try {
-              // Use Promise.race to add timeout protection
-              const roleIds = await Promise.race([
-                fetchUserRoles(account.providerAccountId, guildId),
-                new Promise<string[]>((resolve) => setTimeout(() => resolve([]), 3000))
-              ])
-              token.roleIds = roleIds
-              token.isAdmin = isAdmin(roleIds)
-            } catch (error) {
-              console.error('Error fetching user roles:', error)
-              // Set defaults on error to prevent crashes
-              token.roleIds = []
-              token.isAdmin = false
-            }
-          } else {
-            // If no guild ID or user ID, set defaults
+        const guildId = process.env.DISCORD_GUILD_ID
+        if (guildId && account.providerAccountId) {
+          try {
+            const roleIds = await Promise.race([
+              fetchUserRoles(account.providerAccountId, guildId),
+              new Promise<string[]>((resolve) => setTimeout(() => resolve([]), 3000))
+            ])
+            token.roleIds = roleIds
+            token.isAdmin = isAdmin(roleIds)
+          } catch (error) {
+            console.error('Error fetching user roles:', error)
             token.roleIds = []
             token.isAdmin = false
           }
+        } else {
+          token.roleIds = []
+          token.isAdmin = false
         }
       }
-      // Preserve existing roleIds and isAdmin if they exist
-      if (!token.roleIds) {
-        token.roleIds = []
-      }
-      if (token.isAdmin === undefined) {
-        token.isAdmin = false
-      }
+      if (!token.roleIds) token.roleIds = []
+      if (token.isAdmin === undefined) token.isAdmin = false
       return token
     },
     async session({ session, token }) {

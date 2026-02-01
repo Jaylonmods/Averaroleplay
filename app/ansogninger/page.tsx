@@ -46,6 +46,31 @@ export default function Ansogninger() {
     hvorforBande: '',
   })
   const [submitted, setSubmitted] = useState(false)
+  const [userRoleIds, setUserRoleIds] = useState<string[]>([])
+
+  // Hent friske roller fra Discord (session har kun roller fra login-tidspunkt)
+  useEffect(() => {
+    if (!session?.user) {
+      setUserRoleIds([])
+      return
+    }
+    // Brug session som fallback mens vi henter
+    setUserRoleIds((session.user as any)?.roleIds || [])
+    const fetchRoles = async () => {
+      try {
+        const res = await fetch('/api/auth/roles')
+        const data = await res.json()
+        if (data.success && Array.isArray(data.roleIds)) {
+          setUserRoleIds(data.roleIds)
+        } else {
+          setUserRoleIds((session.user as any)?.roleIds || [])
+        }
+      } catch {
+        setUserRoleIds((session.user as any)?.roleIds || [])
+      }
+    }
+    fetchRoles()
+  }, [session])
 
   useEffect(() => {
     if (session?.user) {
@@ -202,11 +227,9 @@ export default function Ansogninger() {
     },
   ]
 
-  // Whitelist role ID
-  const WHITELIST_ROLE_ID = '1450205521637277810'
-  
-  // Hent role IDs fra session
-  const userRoleIds = (session?.user as any)?.roleIds || []
+  // Whitelist role ID (samme som i admin/unban) – man skal have denne for at ansøge til staff/firma/bande/politi
+  const WHITELIST_ROLE_ID = '1459894678336831552'
+
   const hasWhitelistRole = userRoleIds.includes(WHITELIST_ROLE_ID)
   
   // Vis alle ansøgninger, men tjek om brugeren har whitelist rolle

@@ -63,7 +63,6 @@ export async function fetchUserRoles(userId: string, guildId: string): Promise<s
     const member = await response.json()
     return member.roles || []
   } catch (error: any) {
-    // Handle timeout and network errors gracefully
     if (error.name === 'AbortError' || error.name === 'TimeoutError') {
       console.warn('Discord API request timed out')
     } else {
@@ -71,6 +70,48 @@ export async function fetchUserRoles(userId: string, guildId: string): Promise<s
     }
     return []
   }
+}
+
+/**
+ * Fetch all roles in a guild (id + name)
+ */
+export async function fetchGuildRoles(guildId: string): Promise<{ id: string; name: string }[]> {
+  const botToken = process.env.DISCORD_BOT_TOKEN
+  if (!botToken || !guildId) return []
+
+  try {
+    const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
+      headers: { 'Authorization': `Bot ${botToken}` },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!response.ok) return []
+    const roles = await response.json()
+    return (roles || []).map((r: any) => ({ id: r.id, name: r.name || r.id }))
+  } catch (error: any) {
+    if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+      console.warn('Discord API request timed out')
+    } else {
+      console.error('Error fetching guild roles:', error.message || error)
+    }
+    return []
+  }
+}
+
+/**
+ * Fetch user's roles with names
+ */
+export async function fetchUserRolesWithNames(
+  userId: string,
+  guildId: string
+): Promise<{ id: string; name: string }[]> {
+  const [userRoleIds, guildRoles] = await Promise.all([
+    fetchUserRoles(userId, guildId),
+    fetchGuildRoles(guildId),
+  ])
+  const roleMap = new Map(guildRoles.map((r) => [r.id, r.name]))
+  return userRoleIds
+    .filter((id) => id !== guildId) // @everyone
+    .map((id) => ({ id, name: roleMap.get(id) || `Rolle ${id.slice(-6)}` }))
 }
 
 /**
