@@ -11,7 +11,6 @@ if (process.env.NODE_ENV === 'production' && !baseUrl) {
 }
 
 export const authOptions: NextAuthOptions = {
-  trustHost: true,
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID || '',
