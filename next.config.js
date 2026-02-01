@@ -4,6 +4,7 @@ const nextConfig = {
   distDir: 'build',
   images: {
     domains: ['localhost'],
+    unoptimized: true,
   },
 }
 
